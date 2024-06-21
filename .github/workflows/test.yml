@@ -13,7 +13,6 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    id: test-step
     services:
       postgres:
         image: postgres:12
