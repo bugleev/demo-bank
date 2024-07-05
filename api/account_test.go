@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	mockdb "github.com/bugleev/simplebank/db/mock"
 	db "github.com/bugleev/simplebank/db/sqlc"
@@ -99,6 +100,8 @@ func TestGetAccountAPI(t *testing.T) {
 			request, err := http.NewRequest(http.MethodGet, url, nil)
 			require.NoError(t, err)
 
+			addAuthorization(t, request, server.tokenMaker, authorizationTypeBearer, account.Owner, time.Minute)
+
 			server.router.ServeHTTP(recorder, request)
 
 			tc.checkResponse(t, recorder)
@@ -120,7 +123,6 @@ func TestCreateAccountAPI(t *testing.T) {
 			name: "OK",
 			body: gin.H{
 				"currency": account.Currency,
-				"owner":    account.Owner,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				arg := db.CreateAccountParams{
@@ -141,7 +143,7 @@ func TestCreateAccountAPI(t *testing.T) {
 		{
 			name: "BadRequest",
 			body: gin.H{
-				"currency": account.Currency,
+				"currency": "AUD",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				arg := db.CreateAccountParams{
@@ -161,7 +163,6 @@ func TestCreateAccountAPI(t *testing.T) {
 			name: "InternalError",
 			body: gin.H{
 				"currency": account.Currency,
-				"owner":    account.Owner,
 			},
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
@@ -195,7 +196,7 @@ func TestCreateAccountAPI(t *testing.T) {
 			url := "/accounts"
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 			require.NoError(t, err)
-
+			addAuthorization(t, request, server.tokenMaker, authorizationTypeBearer, account.Owner, time.Minute)
 			server.router.ServeHTTP(recorder, request)
 
 			tc.checkResponse(t, recorder)
@@ -314,6 +315,8 @@ func TestListAccountAPI(t *testing.T) {
 			q.Add("page_size", fmt.Sprintf("%d", tc.query.pageSize))
 			request.URL.RawQuery = q.Encode()
 
+			addAuthorization(t, request, server.tokenMaker, authorizationTypeBearer, accounts[i].Owner, time.Minute)
+
 			server.router.ServeHTTP(recorder, request)
 			tc.checkResponse(t, recorder)
 		})
@@ -324,7 +327,6 @@ func TestListAccountAPI(t *testing.T) {
 func randomAccount() db.Account {
 	return db.Account{
 		ID:       util.RandomInt(1, 1000),
-		Owner:    util.RandomOwner(),
 		Balance:  util.RandomMoney(),
 		Currency: util.RandmCurrency(),
 	}
